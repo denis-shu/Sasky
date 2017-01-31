@@ -1,0 +1,51 @@
+using Sly.DTO;
+using Sly.Models;
+using System.Linq;
+using System.Collections.Generic;
+using System;
+using System.Web;
+using System.Web.Http;
+
+namespace Sly.Controllers.Api
+{
+    public class NewRentalsController : ApiController
+    {
+        private ApplicationDbContext _context;
+
+        public NewRentalsController()
+        {
+            _context = new ApplicationDbContext();
+        }
+
+        [HttpPost]
+        public IHttpActionResult CreateNewRentals(NewRentalDTO newRental)
+        {
+            var customer = _context.Customers
+                .Single(c => c.Id == newRental.CustomerId);
+
+            var products = _context.Products
+                .Where(m => newRental.ProductIds.Contains(m.Id)).ToList();
+
+            foreach (var item in products)
+            {
+                if (item.NumberAvialable == 0)
+                    return BadRequest("Product is not avable");
+
+                item.NumberAvialable--;
+
+                var rental = new Rental
+                {
+                    Customer = customer,
+                    Product = item,
+                    DateRented = DateTime.Now
+                };
+
+                _context.Rentals.Add(rental);
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+            }
+    }
+}
