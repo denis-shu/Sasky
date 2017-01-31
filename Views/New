@@ -1,0 +1,108 @@
+@model dynamic
+@{
+    ViewBag.Title = "New Rental Form";
+}
+
+<h2>New Rental Form</h2>
+<form id="newRental">
+    <div class="form-group">
+        <label>Customer</label>
+
+        <input id="customer" name="cistomer" data-rule-validCustomer="true" required type="text" value="" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Product</label>
+        <input id="product" name="product" data-rule-validProduct="true" type="text" value="" class="form-control" />
+    </div>
+    <div class="row">
+        <div class="col-md-4 col-sm-4">
+            <ul id="products" class="list-group"></ul>
+        </div>
+    </div>
+    <button class="btn btn-primary">Submit</button>
+</form>
+
+@section scripts
+{
+    @Scripts.Render("~/bundles/jqueryval")
+    <script>
+        $(document).ready(function () {
+            var vm = { productIds: [] };
+
+            var customers = new Bloodhound({
+                datumTokenizer: Bloodhound.tokenizers.obj.whitespace('name'),
+                queryTokenizer: Bloodhound.tokenizers.whitespace,
+                remote: {
+                    url: '/api/customers?query=%QUERY',
+                    wildcard: '%QUERY'
+                }
+            });
+
+            $('#customer').typeahead({
+                minLength: 3,
+                highlight: true
+            }, {
+                name: 'customers',
+                display: 'name',
+                source: customers
+            }).on("typeahead:select", function (e, customer) {
+                vm.customerId = customer.id;
+            });
+
+            var products = new Bloodhound({
+                datumTokenizer: Bloodhound.tokenizers.obj.whitespace('name'),
+                queryTokenizer: Bloodhound.tokenizers.whitespace,
+                remote: {
+                    url: '/api/products?query=%QUERY',
+                    wildcard: '%QUERY'
+                }
+            });
+
+            $("#product").typeahead({
+                minLength: 3,
+                highlight: true
+            }, {
+                name: "products",
+                display: "name",
+                source: products
+            }).on("typeahead:select", function (e, product) {
+                $("#products").append("<li class='list-group-item'>" + product.name + "</li>");
+                $("#product").typeahead("val", "");
+                vm.productIds.push(product.id);
+            });
+
+            $.validator.addMethod("validCustomer", function () {
+                return vm.customerId && vm.customerId !== 0;
+            }, "Pls, select valid cus");
+
+            $.validator.addMethod("validProduct", function () {
+                return vm.productIds > 0;
+            }, "Pls, select product");
+
+            var validator = $("#newRental").validate({
+                submitHandler: function () {
+
+                    $.ajax({
+                        url: "/api/newRentals",
+                        method: "post",
+                        data: vm
+                    })
+                        .done(function () {
+                            toastr.success("Success!");
+                            $("#customer").typeahead("val", "");
+                            $("#product").typeahead("val", "");
+                            $("#products").empty();
+                            vm = { productIds: [] };
+                        })
+                    .fail(function () {
+                        toastr.error("Smth wrong ...");
+                    });
+                    return false;
+                }
+            });
+        });
+
+    </script>
+
+}
